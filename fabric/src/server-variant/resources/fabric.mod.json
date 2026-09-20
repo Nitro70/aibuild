@@ -4,14 +4,18 @@
   "version": "@VERSION@",
   "name": "AIBuild (server)",
   "description": "Describe a build with /aibuild and an AI model builds it, block by block. Dedicated server build: operator only by default, with a cooldown and lower limits. Players need nothing installed.",
-  "authors": ["Nitro70"],
+  "authors": [
+    "Nitro70"
+  ],
   "contact": {
     "sources": "https://github.com/Nitro70/aibuild"
   },
   "license": "MIT",
   "environment": "server",
   "entrypoints": {
-    "main": ["dev.nitro.aibuild.fabric.AiBuildMod"]
+    "main": [
+      "dev.nitro.aibuild.fabric.AiBuildMod"
+    ]
   },
   "depends": {
     "fabricloader": ">=0.19.5",

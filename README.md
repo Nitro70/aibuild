@@ -36,6 +36,30 @@ supply your own key.
 
 Each provider's endpoint is already built in, so setup is just the key.
 
+## Settings screen
+
+```
+/aibuildconfig
+```
+
+Everything is picked from a list. Nothing has to be typed exactly right, because getting a
+provider or model id slightly wrong is the difference between working and a baffling 404.
+
+- **Provider** opens a page of buttons, each marked `[key set]`, `[needs key]` or `[no key]`.
+- **Model** has a **Choose** button that asks the provider what your key can actually reach,
+  then shows those as buttons too.
+- **API key** is a paste field. If a key is already saved it shows dots rather than the key,
+  and is only overwritten if you type something new. If the key comes from an environment
+  variable the field says so and locks.
+- **Build settings** has sliders and on/off buttons for size, speed, temperature and the rest,
+  so nothing can be set to a nonsensical value in the first place.
+
+The screen edits the config file on your own machine. In singleplayer that is the one in use.
+If you are connected to someone else's server it is not, and the screen says so at the top
+rather than pretending the change took effect.
+
+The chat commands all still work if you prefer them:
+
 ```
 /aibuild provider              list them, with a marker on the one in use
 /aibuild provider gemini       switch
@@ -91,6 +115,7 @@ key**, because chat is written to the server log, and a key in a log is a key th
 | `/aibuild model <id>` | Set the model for the current provider |
 | `/aibuild models` | Ask the provider what it offers |
 | `/aibuild reload` | Reread the config file |
+| `/aibuildconfig` | Open the settings screen (client side) |
 
 ## Which jar
 
@@ -100,7 +125,8 @@ will load.
 - **`aibuild-<version>.jar`** for singleplayer, and for servers if you want the relaxed
   defaults. Loads anywhere. No operator requirement, no cooldown, 20000 block limit.
 - **`aibuild-<version>-server.jar`** for a dedicated server. Operator only, 30 second cooldown,
-  10000 block limit, smaller build radius.
+  10000 block limit, smaller build radius. Contains no client code at all, so there is no
+  settings screen: edit the config file on the server and run `/aibuild reload`.
 
 Either way, only the host installs it.
 

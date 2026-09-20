@@ -51,6 +51,9 @@ tasks.register('serverJar', Jar) {
     from(zipTree(tasks.named('jar').flatMap { it.archiveFile })) {
         exclude 'fabric.mod.json'
         exclude 'aibuild-defaults.json'
+        // A dedicated server has no net.minecraft.client on the classpath, so the
+        // settings screen is left out rather than merely never loaded.
+        exclude 'dev/nitro/aibuild/fabric/client/**'
     }
     from serverVariantDir
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE

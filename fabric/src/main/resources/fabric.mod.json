@@ -3,15 +3,22 @@
   "id": "aibuild",
   "version": "@VERSION@",
   "name": "AIBuild",
-  "description": "Describe a build with /aibuild and an AI model builds it, block by block. Server side only: other players need nothing installed. Works in singleplayer and on a dedicated server.",
-  "authors": ["Nitro70"],
+  "description": "Describe a build with /aibuild and an AI model builds it, block by block. Settings screen via /aibuildconfig. Server side only: other players need nothing installed. Works in singleplayer and on a dedicated server.",
+  "authors": [
+    "Nitro70"
+  ],
   "contact": {
     "sources": "https://github.com/Nitro70/aibuild"
   },
   "license": "MIT",
   "environment": "*",
   "entrypoints": {
-    "main": ["dev.nitro.aibuild.fabric.AiBuildMod"]
+    "main": [
+      "dev.nitro.aibuild.fabric.AiBuildMod"
+    ],
+    "client": [
+      "dev.nitro.aibuild.fabric.client.AiBuildClient"
+    ]
   },
   "depends": {
     "fabricloader": ">=0.19.5",
