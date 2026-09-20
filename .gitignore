@@ -1,0 +1,22 @@
+# Build output
+build/
+out/
+.gradle/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Fabric run directories
+run/
+runs/
+
+# Secrets. The API key must never reach the repository.
+config/aibuild.json
+*.key
+.env

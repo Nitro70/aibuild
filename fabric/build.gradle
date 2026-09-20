@@ -1,0 +1,61 @@
+plugins {
+    id "net.fabricmc.fabric-loom" version "${loom_version}"
+}
+
+base {
+    archivesName = 'aibuild'
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
+    // No mappings declaration, and no modImplementation or remapJar: Minecraft
+    // 26.1+ ships unobfuscated, so there is nothing to remap. That is also why
+    // Yarn publishes no builds for 26.x. Class names in this module are the real ones.
+    implementation "net.fabricmc:fabric-loader:${rootProject.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
+
+    implementation project(':core')
+    // Gson comes from Minecraft at runtime, so it is deliberately not bundled.
+    compileOnly "com.google.code.gson:gson:${rootProject.gson_version}"
+}
+
+def modVersion = project.version.toString()
+
+// Bundle the core module's classes into the mod jar. Only core's own output is
+// taken, not its transitive dependencies, so Gson is not duplicated.
+tasks.named('jar', Jar) {
+    from project(':core').sourceSets.main.output
+}
+
+tasks.named('processResources', ProcessResources) {
+    inputs.property 'version', modVersion
+    filesMatching('fabric.mod.json') {
+        filter { line -> line.replace('@VERSION@', modVersion) }
+    }
+}
+
+// The server variant. Identical code, but it declares a server-only environment
+// and ships stricter defaults: operator required, lower cap, cooldown on.
+def serverVariantDir = layout.buildDirectory.dir('server-variant')
+
+tasks.register('prepareServerVariant', Copy) {
+    from 'src/server-variant/resources'
+    into serverVariantDir
+    filter { line -> line.replace('@VERSION@', modVersion) }
+}
+
+tasks.register('serverJar', Jar) {
+    dependsOn tasks.named('jar'), tasks.named('prepareServerVariant')
+    archiveClassifier = 'server'
+
+    from(zipTree(tasks.named('jar').flatMap { it.archiveFile })) {
+        exclude 'fabric.mod.json'
+        exclude 'aibuild-defaults.json'
+    }
+    from serverVariantDir
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('serverJar')
+}

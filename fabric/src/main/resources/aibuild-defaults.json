@@ -1,0 +1,10 @@
+{
+  "provider": "gemini",
+  "requireOperator": false,
+  "cooldownSeconds": 0,
+  "maxBlocks": 20000,
+  "maxRadius": 48,
+  "maxHeight": 48,
+  "blocksPerTick": 12,
+  "undoHistory": 10
+}

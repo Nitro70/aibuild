@@ -1,0 +1,23 @@
+subprojects {
+    group = rootProject.maven_group
+    version = rootProject.mod_version
+
+    repositories {
+        mavenCentral()
+    }
+
+    // Configure Java only once the java plugin is present. The fabric module gets
+    // it from Loom, and applying it there ourselves first stops Loom registering
+    // its own configurations (modImplementation and friends).
+    plugins.withType(JavaPlugin).configureEach {
+        java {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(rootProject.java_version as int)
+            }
+        }
+        tasks.withType(JavaCompile).configureEach {
+            options.release = rootProject.java_version as int
+            options.encoding = 'UTF-8'
+        }
+    }
+}

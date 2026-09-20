@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+// Pure Java. This module must never import anything from net.minecraft, which is
+// what lets the interesting logic be unit tested without launching the game.
+dependencies {
+    // Minecraft ships Gson 2.14.0, so inside the mod this is already on the
+    // classpath at runtime. Matching the version keeps compile and runtime in step.
+    implementation "com.google.code.gson:gson:${rootProject.gson_version}"
+
+    testImplementation platform("org.junit:junit-bom:${rootProject.junit_version}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+}
