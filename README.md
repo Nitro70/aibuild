@@ -149,6 +149,49 @@ Either way, only the host installs it.
 Everything except step 6 lives in the `core` module, which has no Minecraft imports at all and
 is covered by 68 unit tests.
 
+## Control port
+
+An optional local TCP port for driving the mod from outside the game: scripting builds, or
+handing an AI agent the keys so it can build and debug for you.
+
+**Off by default.** Anything that reaches this port can place blocks and spend your API
+credit, so it binds to loopback only, and refuses to bind anywhere else unless you set
+`controlToken`.
+
+```json
+"controlPortEnabled": true,
+"controlPort": 25585,
+"controlBindAddress": "127.0.0.1",
+"controlToken": ""
+```
+
+One JSON object per line in, one per line out, so netcat works. There is a small client for
+convenience:
+
+```bash
+python tools/aibuild.py status
+python tools/aibuild.py prompt "a cactus farm with a chest"
+python tools/aibuild.py inspect 120 64 -30
+```
+
+| Command | What it does |
+|---|---|
+| `ping` | Is it alive, and which Minecraft |
+| `status` | Provider, model, whether a key is set, limits, who is online |
+| `ask {text}` | Send a prompt to the model and get its **raw reply**. Builds nothing |
+| `plan {text}` | Model plus validation, returns the finished plan. Builds nothing |
+| `prompt {text}` | The full thing, blocks appear in the world |
+| `place {plan}` | Build a plan you wrote yourself, **no model involved** |
+| `undo` / `cancel` | As the chat commands |
+| `inspect {x,y,z}` | Read the block state actually in the world |
+| `blocks {query}` | Search the block registry for real ids |
+| `players` | Who is online |
+
+The three that matter for debugging are `ask`, `place` and `inspect`. Between them they tell
+you whether the model said something odd, whether the mod mishandled something sensible, and
+what actually ended up in the world. A hand written `place` plan goes through exactly the same
+validator as a generated one, so it cannot sneak past the block checks.
+
 ## Honest expectations
 
 The mod faithfully builds whatever the model specifies. Whether that redstone **works** is down

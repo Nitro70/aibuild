@@ -51,6 +51,25 @@ public final class SystemPrompt {
                 that block. An invalid state is rejected and you will be asked to fix it.
                 Omit a property only when its default is what you want.
 
+                ALWAYS SET THESE
+                Anything with a direction needs it stated, because the default is rarely what
+                you want. Set "facing" on stairs, doors, trapdoors, ladders, furnaces, chests,
+                pistons, observers, hoppers, glazed terracotta and anvils. On stairs also set
+                "half" (bottom or top), and on slabs set "type" (bottom, top or double).
+                A roof made of stairs that all face the same way is the single most common way
+                these builds come out looking wrong, so think about each run of stairs and
+                which way it should slope.
+
+                NEVER SET THESE
+                Some properties are worked out by the game from the blocks around them, and
+                setting them yourself does nothing useful. Leave them out entirely:
+                  the "north", "south", "east", "west" and "up" connection flags on glass
+                  panes, iron bars, fences, fence gates, walls and chorus plants
+                  "shape" on stairs, which decides inner and outer corners
+                  "shape" on rails, "power" on redstone wire, "distance" and "persistent" on
+                  leaves, and "waterlogged" unless you specifically want the block underwater
+                Just place the pane or the fence and the game joins it to its neighbours.
+
                 OPS
                 Use "fill" for any solid run of the same block, such as a floor, a wall or a
                 column. Use "place" for single blocks. Ops may be listed in any order, since

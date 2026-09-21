@@ -93,6 +93,28 @@ public final class AiBuildConfig {
     /** How many builds per player can be undone. */
     public int undoHistory = 10;
 
+    // ------------------------------------------------------------ control port
+
+    /**
+     * Open a local TCP port for driving the mod from outside the game.
+     *
+     * <p>Off by default, and for good reason: anything that can reach this port
+     * can place blocks in the world and spend your API credit. It is a debugging
+     * and automation tool, not a feature to leave running on a public server.
+     */
+    public boolean controlPortEnabled = false;
+
+    public int controlPort = 25585;
+
+    /**
+     * Interface to listen on. Loopback only unless you have a specific reason.
+     * Binding anywhere else without setting a token is refused outright.
+     */
+    public String controlBindAddress = "127.0.0.1";
+
+    /** Shared secret. Required when binding to anything other than loopback. */
+    public String controlToken = "";
+
     /** Blocks the server refuses to place, whatever the model asks for. */
     public Set<String> blacklist = new LinkedHashSet<>(Set.of(
             "minecraft:bedrock",
@@ -168,6 +190,14 @@ public final class AiBuildConfig {
         originOffset = (int) clamp(originOffset, 0, 64);
         cooldownSeconds = (int) clamp(cooldownSeconds, 0, 3600);
         undoHistory = (int) clamp(undoHistory, 0, 100);
+
+        controlPort = (int) clamp(controlPort, 1, 65535);
+        if (controlBindAddress == null || controlBindAddress.isBlank()) {
+            controlBindAddress = "127.0.0.1";
+        }
+        if (controlToken == null) {
+            controlToken = "";
+        }
         return this;
     }
 

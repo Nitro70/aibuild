@@ -6,6 +6,7 @@ import dev.nitro.aibuild.core.prompt.MinecraftVersion;
 import dev.nitro.aibuild.fabric.build.BuildScheduler;
 import dev.nitro.aibuild.fabric.command.AiBuildCommand;
 import dev.nitro.aibuild.fabric.config.ConfigLoader;
+import dev.nitro.aibuild.fabric.control.ControlServer;
 import dev.nitro.aibuild.fabric.undo.UndoStore;
 import dev.nitro.aibuild.fabric.world.FabricBlockRegistry;
 import net.fabricmc.api.ModInitializer;
@@ -49,6 +50,9 @@ public final class AiBuildMod implements ModInitializer {
     /** Last build time per player, for the cooldown. */
     private static final Map<UUID, Long> LAST_BUILD = new HashMap<>();
 
+    /** Optional TCP port for driving the mod from outside the game. Off by default. */
+    private static final ControlServer CONTROL = new ControlServer();
+
     @Override
     public void onInitialize() {
         reloadConfig();
@@ -68,6 +72,7 @@ public final class AiBuildMod implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(server -> scheduler.tick(server));
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            CONTROL.stop();
             scheduler.clear();
             undoStore.clear();
             executor.shutdownNow();
@@ -76,6 +81,12 @@ public final class AiBuildMod implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             if (executor.isShutdown()) {
                 executor = newExecutor();
+            }
+            // Started here rather than at init, because it needs a running server
+            // to hand world work to.
+            String note = CONTROL.start(server, config);
+            if (note != null) {
+                LOGGER.info(note);
             }
         });
 
@@ -127,6 +138,10 @@ public final class AiBuildMod implements ModInitializer {
 
     public static ExecutorService executor() {
         return executor;
+    }
+
+    public static ControlServer control() {
+        return CONTROL;
     }
 
     /**

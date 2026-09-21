@@ -104,6 +104,23 @@ public final class BuildPipeline {
         return new Result(plan, PlacementOrderer.order(placements), repaired);
     }
 
+    /**
+     * Sends a prompt straight to the model and hands back exactly what came out,
+     * unparsed and unvalidated.
+     *
+     * <p>For debugging. When a build comes out wrong the first question is always
+     * whether the model said something odd or the mod mishandled something
+     * sensible, and this is what tells the two apart.
+     */
+    public String ask(String userPrompt) throws BuildFailedException {
+        String system = SystemPrompt.build(config.maxRadius, config.maxHeight, config.maxBlocks);
+        try {
+            return client.generatePlanJson(system, userPrompt);
+        } catch (LlmException e) {
+            throw new BuildFailedException(e.getMessage(), e);
+        }
+    }
+
     private BuildPlan requestPlan(String system, String prompt) throws BuildFailedException {
         String json;
         try {
