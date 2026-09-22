@@ -19,7 +19,7 @@ public final class BuildSettingsScreen extends Screen {
 
     private static final int WIDGET_WIDTH = 200;
     private static final int WIDGET_HEIGHT = 20;
-    private static final int GAP = 4;
+    private static final int GAP = 2;
 
     private final Screen parent;
     private final AiBuildConfig config = AiBuildMod.config();
@@ -34,7 +34,7 @@ public final class BuildSettingsScreen extends Screen {
         int gridWidth = WIDGET_WIDTH * 2 + GAP;
         int left = (width - gridWidth) / 2;
         int rightColumn = left + WIDGET_WIDTH + GAP;
-        int top = 34;
+        int top = 30;
         int row = 0;
 
         addRenderableWidget(new StringWidget(0, 12, width, 12,
@@ -71,6 +71,11 @@ public final class BuildSettingsScreen extends Screen {
                 v -> Component.literal("Cooldown: " + (v == 0 ? "off" : v + "s")),
                 v -> config.cooldownSeconds = v));
 
+        addRenderableWidget(new ValueSlider(left, top + rowY(row++), WIDGET_WIDTH, WIDGET_HEIGHT,
+                1, 100, 1, config.commandsPerTick,
+                v -> Component.literal("Commands per tick: " + v),
+                v -> config.commandsPerTick = v));
+
         // Right column: model behaviour and the toggles.
         row = 0;
 
@@ -103,6 +108,11 @@ public final class BuildSettingsScreen extends Screen {
                 .create(rightColumn, top + rowY(row++), WIDGET_WIDTH, WIDGET_HEIGHT,
                         Component.literal("Operators only"),
                         (button, value) -> config.requireOperator = value));
+
+        addRenderableWidget(CycleButton.onOffBuilder(config.hideCommandFeedback)
+                .create(rightColumn, top + rowY(row++), WIDGET_WIDTH, WIDGET_HEIGHT,
+                        Component.literal("Hide command spam"),
+                        (button, value) -> config.hideCommandFeedback = value));
 
         addRenderableWidget(new StringWidget(0, height - 48, width, 10, Component.literal(
                         "Flip repeaters if contraptions come out facing backwards.")

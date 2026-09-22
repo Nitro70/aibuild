@@ -1,6 +1,7 @@
 package dev.nitro.aibuild.fabric.client.screen;
 
 import dev.nitro.aibuild.core.config.AiBuildConfig;
+import dev.nitro.aibuild.core.config.BuildMode;
 import dev.nitro.aibuild.core.config.ProviderSettings;
 import dev.nitro.aibuild.core.llm.LlmClient;
 import dev.nitro.aibuild.core.llm.LlmClientFactory;
@@ -10,6 +11,7 @@ import dev.nitro.aibuild.fabric.AiBuildMod;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
@@ -134,6 +136,17 @@ public final class AiBuildConfigScreen extends Screen {
                     Component.literal(pendingModelList).withStyle(ChatFormatting.GRAY), font));
             y += 16;
         }
+
+        // Build mode, a toggle rather than something to type.
+        addRenderableWidget(new StringWidget(left, y + 5, LABEL_WIDTH, 10,
+                Component.literal("Build mode"), font));
+        addRenderableWidget(CycleButton.builder(
+                        (BuildMode mode) -> Component.literal(mode.displayName()), config.activeBuildMode())
+                .withValues(BuildMode.values())
+                .displayOnlyValue()
+                .create(fieldX, y, FIELD_WIDTH, 20, Component.literal("Build mode"),
+                        (button, mode) -> config.buildMode = mode.id()));
+        y += ROW_HEIGHT;
 
         addRenderableWidget(Button.builder(Component.literal("Build settings..."),
                         button -> minecraft.setScreenAndShow(new BuildSettingsScreen(this)))

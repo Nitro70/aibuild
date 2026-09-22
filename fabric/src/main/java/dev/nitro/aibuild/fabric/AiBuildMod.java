@@ -136,7 +136,16 @@ public final class AiBuildMod implements ModInitializer {
         return undoStore;
     }
 
-    public static ExecutorService executor() {
+    /**
+     * Recreated on demand. Leaving a singleplayer world stops the integrated server,
+     * which shuts this down, and joining a remote server afterwards never fires
+     * SERVER_STARTED to bring it back. Without this, the first build on a server
+     * after leaving a singleplayer world would fail.
+     */
+    public static synchronized ExecutorService executor() {
+        if (executor.isShutdown()) {
+            executor = newExecutor();
+        }
         return executor;
     }
 

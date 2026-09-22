@@ -93,6 +93,24 @@ public final class AiBuildConfig {
     /** How many builds per player can be undone. */
     public int undoHistory = 10;
 
+    // ------------------------------------------------------------- build mode
+
+    /**
+     * How builds reach the world: auto, direct or commands. See {@link BuildMode}.
+     * Auto uses the server mod when there is one and falls back to sending
+     * /setblock and /fill commands when there is not.
+     */
+    public String buildMode = BuildMode.AUTO.id();
+
+    /** In commands mode, how many commands the client sends per tick. */
+    public int commandsPerTick = 16;
+
+    /**
+     * In commands mode, hide the "Changed the block at..." line each command
+     * prints. A few hundred of those would bury the chat.
+     */
+    public boolean hideCommandFeedback = true;
+
     // ------------------------------------------------------------ control port
 
     /**
@@ -140,6 +158,11 @@ public final class AiBuildConfig {
     /** The selected provider, falling back to Gemini if the id is not recognised. */
     public Provider activeProvider() {
         return Provider.byId(provider).orElse(Provider.GEMINI);
+    }
+
+    /** The selected build mode, falling back to auto if the id is not recognised. */
+    public BuildMode activeBuildMode() {
+        return BuildMode.byId(buildMode).orElse(BuildMode.AUTO);
     }
 
     /** Settings for one provider, created on demand so a trimmed config still works. */
@@ -190,6 +213,11 @@ public final class AiBuildConfig {
         originOffset = (int) clamp(originOffset, 0, 64);
         cooldownSeconds = (int) clamp(cooldownSeconds, 0, 3600);
         undoHistory = (int) clamp(undoHistory, 0, 100);
+
+        if (BuildMode.byId(buildMode).isEmpty()) {
+            buildMode = BuildMode.AUTO.id();
+        }
+        commandsPerTick = (int) clamp(commandsPerTick, 1, 200);
 
         controlPort = (int) clamp(controlPort, 1, 65535);
         if (controlBindAddress == null || controlBindAddress.isBlank()) {

@@ -2,8 +2,11 @@
 
 Describe something with `/aibuild` and an AI model builds it in your world, block by block.
 
-Works in singleplayer and on a dedicated server. It is server side only, so **other players
-on your server do not need to install anything**.
+Works in singleplayer, on a server that has the mod, **and on a server that does not**:
+
+- **Server has AIBuild:** only the server needs it. Other players install nothing.
+- **Server does not have AIBuild:** install the mod on your own client and be an operator.
+  Builds go out as ordinary `/setblock` and `/fill` commands.
 
 Minecraft **26.3**, Fabric, Java 25.
 
@@ -12,6 +15,49 @@ Minecraft **26.3**, Fabric, Java 25.
 /aibuild a cactus farm with a chest
 /aibuild a small stone bridge with lanterns
 ```
+
+## Build modes
+
+Set with `/aibuild mode <auto|direct|commands>`, or the **Build mode** toggle in
+`/aibuild config`.
+
+| Mode | How it builds | Needs |
+|---|---|---|
+| **auto** (default) | Direct when the server has the mod, commands when it does not | whichever applies |
+| **direct** | The server side mod writes the blocks | AIBuild on the server |
+| **commands** | Your client sends `/setblock` and `/fill` | the client mod, and OP |
+
+Singleplayer always counts as having the mod, since your own game runs the same jar.
+
+**Direct is the better result when you can get it.** It holds back every redstone update until
+the whole build is down, so nothing fires half built. Commands mode cannot do that: each
+`/setblock` updates its neighbours as it lands, so redstone may react while it builds. The
+support first ordering still applies, so torches and dust land on something.
+
+In both modes **the build goes where you were standing when you ran the command**, facing the
+way you were facing, in the dimension you were in. Walk off while the model thinks and it still
+lands in the right place. In commands mode every command is pinned with `execute in <dimension>`
+so even changing dimension mid build cannot move it.
+
+### Commands mode, in detail
+
+- **Checks before it spends anything.** A server only sends you the commands you are allowed
+  to run, so before the model is asked, the mod reads that list and confirms you can use
+  `/setblock`, `/fill` and `/execute`. If not, it says which one is missing and stops.
+- **Straight runs of the same block become one `/fill`**, so a floor costs a handful of
+  commands rather than hundreds. Nothing is ever reordered to make that happen.
+- **Never uses `strict` mode.** Strict skips the neighbour shape pass, which leaves panes,
+  fences and stairs unconnected.
+- **Your chat stays readable.** The "Changed the block at..." line each command prints is
+  hidden while a build runs, and counted instead, so the summary tells you how many failed
+  and shows the first failure. Turn **Hide command spam** off to see them all.
+- **Undo works.** Before sending anything, the mod reads what is currently at every position
+  from your copy of the world, and `/aibuild undo` puts it back. It restores blocks, not
+  container contents, so undoing over a chest brings the chest back empty. Undo history is
+  cleared when you change server, so it can never touch the wrong world.
+- **Commands per tick** (default 16) sets the pace. Operators are exempt from the chat spam
+  kick, which is why this can run fast. If a server grants `/setblock` through a permissions
+  plugin without making you an operator, you are *not* exempt: set commands per tick to 1.
 
 ## Pick your own AI
 
@@ -115,12 +161,14 @@ key**, because chat is written to the server log, and a key in a log is a key th
 | `/aibuild model <id>` | Set the model for the current provider |
 | `/aibuild models` | Ask the provider what it offers |
 | `/aibuild reload` | Reread the config file |
-| `/aibuildconfig` | Open the settings screen (client side) |
+| `/aibuild mode <auto\|direct\|commands>` | Choose how builds reach the world |
+| `/aibuild config` | Open the settings screen (also `/aibuildconfig`) |
+| `/aibuild serverinfo` | Whether this server runs AIBuild, and which provider it uses |
 
 ## Which jar
 
 Both are built from identical code. They differ only in the defaults they ship and where they
-will load.
+will load. **For playing on someone else's server, you want the normal jar on your client.**
 
 - **`aibuild-<version>.jar`** for singleplayer, and for servers if you want the relaxed
   defaults. Loads anywhere. No operator requirement, no cooldown, 20000 block limit.

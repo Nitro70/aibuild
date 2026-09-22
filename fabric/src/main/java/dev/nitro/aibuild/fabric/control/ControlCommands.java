@@ -24,8 +24,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.Property;
 
 import java.util.List;
 import java.util.Locale;
@@ -256,7 +254,7 @@ public final class ControlCommands {
         }
 
         BlockPos pos = new BlockPos(x, y, z);
-        String state = onServerThread(() -> describeState(level.getBlockState(pos)));
+        String state = onServerThread(() -> dev.nitro.aibuild.fabric.world.BlockStates.describe(level.getBlockState(pos)));
 
         JsonObject out = ok();
         out.addProperty("x", x);
@@ -406,32 +404,6 @@ public final class ControlCommands {
             array.add(entry);
         }
         return array;
-    }
-
-    /** Renders a live block state back into the id[key=value] form the model writes. */
-    private static String describeState(BlockState state) {
-        Identifier id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
-        StringBuilder text = new StringBuilder(id == null ? "unknown" : id.toString());
-
-        var properties = state.getBlock().getStateDefinition().getProperties();
-        if (properties.isEmpty()) {
-            return text.toString();
-        }
-        text.append('[');
-        boolean first = true;
-        for (Property<?> property : properties) {
-            if (!first) {
-                text.append(',');
-            }
-            text.append(property.getName()).append('=').append(valueOf(state, property));
-            first = false;
-        }
-        return text.append(']').toString();
-    }
-
-    /** Separate so the wildcard on Property can be captured into a type variable. */
-    private static <T extends Comparable<T>> String valueOf(BlockState state, Property<T> property) {
-        return property.getName(state.getValue(property));
     }
 
     private <T> T onServerThread(Supplier<T> action) throws Exception {

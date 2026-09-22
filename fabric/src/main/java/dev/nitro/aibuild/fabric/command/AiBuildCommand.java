@@ -34,11 +34,21 @@ import java.util.List;
 /** Everything {@code /aibuild} can do. */
 public final class AiBuildCommand {
 
+    /**
+     * A subcommand only the server side registers.
+     *
+     * <p>Fabric merges client commands into the command tree the server sends, so
+     * seeing an {@code aibuild} node on the client proves nothing: it may be the
+     * client's own. This child is how the client tells that the server has the mod.
+     */
+    public static final String SERVER_MARKER = "serverinfo";
+
     private AiBuildCommand() {}
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("aibuild")
                 .requires(AiBuildCommand::allowed)
+                .then(Commands.literal(SERVER_MARKER).executes(AiBuildCommand::serverInfo))
                 .then(Commands.literal("undo").executes(AiBuildCommand::undo))
                 .then(Commands.literal("cancel").executes(AiBuildCommand::cancel))
                 .then(Commands.literal("status").executes(AiBuildCommand::status))
@@ -314,6 +324,17 @@ public final class AiBuildCommand {
                 server.execute(() -> source.sendFailure(Component.literal(e.getMessage())));
             }
         });
+        return 1;
+    }
+
+    private static int serverInfo(CommandContext<CommandSourceStack> ctx) {
+        String version = net.fabricmc.loader.api.FabricLoader.getInstance()
+                .getModContainer(AiBuildMod.MOD_ID)
+                .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                .orElse("unknown");
+        ctx.getSource().sendSuccess(() -> Component.literal("This server runs AIBuild " + version
+                + ". Provider: " + AiBuildMod.config().activeProvider().displayName())
+                .withStyle(ChatFormatting.AQUA), false);
         return 1;
     }
 
