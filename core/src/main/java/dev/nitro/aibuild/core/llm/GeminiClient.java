@@ -69,8 +69,7 @@ public final class GeminiClient implements LlmClient {
                 .build(), timeout, NAME);
 
         if (response.statusCode() != 200) {
-            throw new LlmException(
-                    HttpSupport.describeFailure(response.statusCode(), response.body(), NAME, model));
+            throw HttpSupport.failure(response, NAME, model);
         }
         return extractText(response.body());
     }
@@ -85,8 +84,7 @@ public final class GeminiClient implements LlmClient {
                 .build(), timeout, NAME);
 
         if (response.statusCode() != 200) {
-            throw new LlmException(
-                    HttpSupport.describeFailure(response.statusCode(), response.body(), NAME, model));
+            throw HttpSupport.failure(response, NAME, model);
         }
 
         List<String> out = new ArrayList<>();

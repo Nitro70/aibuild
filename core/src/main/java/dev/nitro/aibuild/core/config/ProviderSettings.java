@@ -20,6 +20,13 @@ public final class ProviderSettings {
     /** Model id. Empty means the provider's built in default. Use /aibuild models. */
     public String model = "";
 
+    /**
+     * A second model to try when this one is still overloaded after its retries.
+     * Overload is usually one model rather than the whole provider, so a smaller
+     * or older model often answers while the main one is busy. Empty for none.
+     */
+    public String fallbackModel = "";
+
     /** Override the endpoint. Empty means the provider's built in URL. */
     public String baseUrl = "";
 
@@ -41,6 +48,10 @@ public final class ProviderSettings {
 
     public String modelOrDefault(String fallback) {
         return model == null || model.isBlank() ? fallback : model.trim();
+    }
+
+    public String fallbackModelOrEmpty() {
+        return fallbackModel == null ? "" : fallbackModel.trim();
     }
 
     public String baseUrlOrDefault(String fallback) {

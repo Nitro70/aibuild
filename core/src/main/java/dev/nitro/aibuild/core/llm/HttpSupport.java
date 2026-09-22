@@ -15,6 +15,10 @@ import java.time.Duration;
 /** Shared HTTP plumbing and error wording for the provider clients. */
 final class HttpSupport {
 
+    /** Gemini's RetryInfo, e.g. {@code "retryDelay": "7s"} or {@code "7.5s"}. */
+    private static final java.util.regex.Pattern RETRY_DELAY =
+            java.util.regex.Pattern.compile("\"retryDelay\"\\s*:\\s*\"(\\d+)(?:\\.\\d+)?s\"");
+
     private HttpSupport() {}
 
     static HttpClient newClient() {
@@ -29,7 +33,7 @@ final class HttpSupport {
         try {
             return http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (HttpTimeoutException e) {
-            throw new LlmException(provider + " did not respond within " + timeout.toSeconds()
+            throw LlmException.timeout(provider + " did not respond within " + timeout.toSeconds()
                     + " seconds. Try a simpler build, or raise requestTimeoutSeconds in the config.", e);
         } catch (IOException e) {
             throw new LlmException("Could not reach " + provider + ": " + e.getMessage(), e);
@@ -37,6 +41,40 @@ final class HttpSupport {
             Thread.currentThread().interrupt();
             throw new LlmException("The request was interrupted.", e);
         }
+    }
+
+    /**
+     * A failed response as an exception carrying its status and any wait the
+     * provider asked for, so the retry layer can tell a busy provider from a
+     * broken request.
+     */
+    static LlmException failure(HttpResponse<String> response, String provider, String model) {
+        int status = response.statusCode();
+        return new LlmException(describeFailure(status, response.body(), provider, model),
+                status, retryAfterSeconds(response));
+    }
+
+    /**
+     * How long the provider asked us to wait. The standard Retry-After header when
+     * present, otherwise Gemini's RetryInfo in the body, written like "7s".
+     *
+     * @return -1 when there is no hint
+     */
+    static int retryAfterSeconds(HttpResponse<String> response) {
+        return retryAfterSeconds(response.headers().firstValue("retry-after").orElse(""), response.body());
+    }
+
+    /** The parsing on its own, so it can be tested without a real response. */
+    static int retryAfterSeconds(String header, String body) {
+        String value = header == null ? "" : header.trim();
+        if (value.matches("\\d+")) {
+            return Integer.parseInt(value);
+        }
+        java.util.regex.Matcher inBody = RETRY_DELAY.matcher(body == null ? "" : body);
+        if (inBody.find()) {
+            return Integer.parseInt(inBody.group(1));
+        }
+        return -1;
     }
 
     /**

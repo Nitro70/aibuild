@@ -84,8 +84,7 @@ public final class OpenAiCompatibleClient implements LlmClient {
 
         HttpResponse<String> response = HttpSupport.send(http, request.build(), timeout, name);
         if (response.statusCode() != 200) {
-            throw new LlmException(
-                    HttpSupport.describeFailure(response.statusCode(), response.body(), name, model));
+            throw HttpSupport.failure(response, name, model);
         }
         return extractContent(response.body());
     }
@@ -102,8 +101,7 @@ public final class OpenAiCompatibleClient implements LlmClient {
 
         HttpResponse<String> response = HttpSupport.send(http, request.build(), timeout, name);
         if (response.statusCode() != 200) {
-            throw new LlmException(
-                    HttpSupport.describeFailure(response.statusCode(), response.body(), name, model));
+            throw HttpSupport.failure(response, name, model);
         }
 
         List<String> out = new ArrayList<>();

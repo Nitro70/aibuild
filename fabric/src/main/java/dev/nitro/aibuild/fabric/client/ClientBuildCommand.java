@@ -45,6 +45,9 @@ import java.util.List;
  */
 public final class ClientBuildCommand {
 
+    /** A request is with the model. Mirrors the server side guard, for the same reason. */
+    private static volatile boolean waitingOnModel;
+
     private ClientBuildCommand() {}
 
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher) {
@@ -167,9 +170,18 @@ public final class ClientBuildCommand {
             return 0;
         }
 
+        if (waitingOnModel) {
+            source.sendError(Component.literal("Still waiting on the model for your last build. Give it a moment."));
+            return 0;
+        }
+
+        Minecraft client = Minecraft.getInstance();
         LlmClient llm;
         try {
-            llm = LlmClientFactory.create(config);
+            llm = LlmClientFactory.create(config, dev.nitro.aibuild.fabric.RetryNotices.to(
+                    config.activeProvider().displayName(),
+                    line -> client.execute(() -> CommandBuildRunner.say(
+                            Component.literal(line).withStyle(ChatFormatting.YELLOW)))));
         } catch (LlmClientFactory.NotConfiguredException e) {
             source.sendError(Component.literal(e.getMessage() + " Or open /aibuild config."));
             return 0;
@@ -189,7 +201,7 @@ public final class ClientBuildCommand {
         source.sendFeedback(Component.literal("Asking " + config.activeProvider().displayName()
                 + " for: " + prompt).withStyle(ChatFormatting.GRAY));
 
-        Minecraft client = Minecraft.getInstance();
+        waitingOnModel = true;
         AiBuildMod.executor().submit(() -> {
             try {
                 BuildPipeline.Result result = new BuildPipeline(llm, AiBuildMod.registry(), config).run(prompt);
@@ -214,6 +226,8 @@ public final class ClientBuildCommand {
                 AiBuildMod.LOGGER.error("Unexpected failure building '{}'", prompt, e);
                 client.execute(() -> CommandBuildRunner.say(
                         Component.literal("Something went wrong: " + e).withStyle(ChatFormatting.RED)));
+            } finally {
+                waitingOnModel = false;
             }
         });
         return 1;

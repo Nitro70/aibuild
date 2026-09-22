@@ -24,11 +24,36 @@ public final class LlmClientFactory {
     }
 
     public static LlmClient create(AiBuildConfig config) throws NotConfiguredException {
+        return create(config, RetryingLlmClient.RetryListener.NONE);
+    }
+
+    /**
+     * The configured provider, wrapped so busy and rate limited replies are retried,
+     * and with the fallback model behind it when one is set.
+     *
+     * @param listener told about each retry, so the player is not left wondering
+     */
+    public static LlmClient create(AiBuildConfig config, RetryingLlmClient.RetryListener listener)
+            throws NotConfiguredException {
+        Provider provider = config.activeProvider();
+        ProviderSettings settings = config.settingsFor(provider);
+        String model = settings.modelOrDefault(provider.defaultModel());
+
+        LlmClient primary = createRaw(config, model);
+        String fallbackModel = settings.fallbackModelOrEmpty();
+        LlmClient fallback = fallbackModel.isEmpty() || fallbackModel.equals(model)
+                ? null
+                : createRaw(config, fallbackModel);
+
+        return new RetryingLlmClient(primary, fallback, config.maxRetries, Thread::sleep, listener);
+    }
+
+    /** One provider client for one model, with no retrying. */
+    private static LlmClient createRaw(AiBuildConfig config, String model) throws NotConfiguredException {
         Provider provider = config.activeProvider();
         ProviderSettings settings = config.settingsFor(provider);
         Duration timeout = Duration.ofSeconds(config.requestTimeoutSeconds);
 
-        String model = settings.modelOrDefault(provider.defaultModel());
         String baseUrl = settings.baseUrlOrDefault(provider.defaultBaseUrl());
         String apiKey = resolveApiKey(provider, settings);
 
@@ -51,8 +76,8 @@ public final class LlmClientFactory {
                     config.temperature, config.maxOutputTokens);
             case ANTHROPIC -> new AnthropicClient(apiKey, baseUrl, model, timeout,
                     config.temperature, config.maxOutputTokens);
-            case CLAUDE_CLI -> new ClaudeCliClient(config.claudeCliPath, settings.modelOrDefault(""),
-                    timeout, config.claudeCliExtraArgs);
+            case CLAUDE_CLI -> new ClaudeCliClient(config.claudeCliPath, model, timeout,
+                    config.claudeCliExtraArgs);
             case OPENAI -> new OpenAiCompatibleClient(provider.displayName(), apiKey, baseUrl, model,
                     timeout, config.temperature, config.maxOutputTokens, settings.jsonMode);
         };

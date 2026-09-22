@@ -250,6 +250,29 @@ timing usually do not, though they often come close enough to fix by hand.
 The validator, the local coordinate space and the repair pass raise the hit rate a long way.
 They do not make it a redstone engineer.
 
+## If the provider says it is busy
+
+A **503** means the model is overloaded on the provider's side, not that anything is wrong with
+your key or the mod. Gemini words it as "this model is currently experiencing high demand".
+
+AIBuild now handles it for you. It retries up to three times, waiting about 2, 4 and then 8
+seconds, and tells you in chat while it does. If the provider says how long to wait, that wait is
+used instead. Errors that retrying cannot fix, like a bad key, are never retried.
+
+If one model stays busy for a while, give it a fallback. Overload is usually one model rather than
+the whole provider, so a smaller or older one often answers while the main one is swamped. In
+`config/aibuild.json`, under your provider:
+
+```json
+"gemini": { "apiKey": "...", "model": "gemini-2.5-flash", "fallbackModel": "another-model-id" }
+```
+
+Run `/aibuild models` to see which ids your key can use.
+
+You also cannot start a second build while the first is still waiting on the model, so typing the
+command again during an outage no longer piles extra requests onto a provider that is already
+struggling.
+
 ## If redstone comes out backwards
 
 Set `flipRepeaterFacing` to `true` in the config and `/aibuild reload`.
@@ -269,6 +292,8 @@ All in `config/aibuild.json`.
 | `temperature` | `0.4` | Lower is more literal |
 | `maxOutputTokens` | `32768` | Raise for very large builds |
 | `requestTimeoutSeconds` | `180` | How long to wait for the model |
+| `maxRetries` | `3` | Retries when the provider is busy or rate limited. `0` turns it off |
+| `providers.<id>.fallbackModel` | empty | A second model to try if the first stays busy |
 | `maxBlocks` | `20000` | Hard cap per build |
 | `maxRadius` / `maxHeight` | `48` | How far a build may reach from its origin |
 | `blocksPerTick` | `12` | Build speed. `0` places everything at once |

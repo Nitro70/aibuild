@@ -90,7 +90,7 @@ public final class ClaudeCliClient implements LlmClient {
 
             if (!process.waitFor(timeout.toSeconds(), TimeUnit.SECONDS)) {
                 process.destroyForcibly();
-                throw new LlmException(NAME + " did not finish within " + timeout.toSeconds()
+                throw LlmException.timeout(NAME + " did not finish within " + timeout.toSeconds()
                         + " seconds. Try a simpler build, or raise requestTimeoutSeconds.");
             }
         } catch (IOException e) {

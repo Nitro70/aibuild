@@ -43,6 +43,17 @@ public final class AiBuildCommand {
      */
     public static final String SERVER_MARKER = "serverinfo";
 
+    /**
+     * Players whose request is still with the model.
+     *
+     * <p>The scheduler only knows about builds that are placing blocks, so without
+     * this a second command sent while the first waits on the model starts a second
+     * request. During an outage that is exactly what people do, and every extra
+     * request lands on a provider that is already overloaded.
+     */
+    private static final java.util.Set<java.util.UUID> WAITING_ON_MODEL =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     private AiBuildCommand() {}
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -97,6 +108,13 @@ public final class AiBuildCommand {
             source.sendFailure(Component.literal("Wait " + wait + " more seconds before building again."));
             return 0;
         }
+        // Last check, because it claims the slot and every return after it must
+        // release it. The task's finally does that.
+        if (!WAITING_ON_MODEL.add(player.getUUID())) {
+            source.sendFailure(Component.literal(
+                    "Still waiting on the model for your last build. Give it a moment."));
+            return 0;
+        }
 
         // Work the origin out now, on the server thread, so the build lands where
         // the player stood when they asked rather than wherever they wander to.
@@ -115,7 +133,9 @@ public final class AiBuildCommand {
 
         AiBuildMod.executor().submit(() -> {
             try {
-                LlmClient client = LlmClientFactory.create(config);
+                LlmClient client = LlmClientFactory.create(config, dev.nitro.aibuild.fabric.RetryNotices.to(
+                        config.activeProvider().displayName(),
+                        line -> sendLater(server, player, line, ChatFormatting.YELLOW)));
                 BuildPipeline pipeline = new BuildPipeline(client, AiBuildMod.registry(), config);
                 BuildPipeline.Result result = pipeline.run(prompt);
 
@@ -146,6 +166,8 @@ public final class AiBuildCommand {
             } catch (RuntimeException e) {
                 AiBuildMod.LOGGER.error("Unexpected failure building '{}'", prompt, e);
                 sendLater(server, player, "Something went wrong: " + e);
+            } finally {
+                WAITING_ON_MODEL.remove(player.getUUID());
             }
         });
         return 1;
@@ -350,10 +372,15 @@ public final class AiBuildCommand {
 
     /** Hops back onto the server thread to say something went wrong. */
     private static void sendLater(MinecraftServer server, ServerPlayer player, String message) {
+        sendLater(server, player, message, ChatFormatting.RED);
+    }
+
+    private static void sendLater(MinecraftServer server, ServerPlayer player, String message,
+                                  ChatFormatting colour) {
         server.execute(() -> {
             ServerPlayer target = server.getPlayerList().getPlayer(player.getUUID());
             if (target != null) {
-                target.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED));
+                target.sendSystemMessage(Component.literal(message).withStyle(colour));
             }
         });
     }

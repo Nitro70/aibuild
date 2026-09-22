@@ -50,6 +50,13 @@ public final class AiBuildConfig {
 
     public int requestTimeoutSeconds = 180;
 
+    /**
+     * How many times to retry when the provider says it is busy or rate limited,
+     * waiting a little longer each time. Permanent errors such as a bad key are
+     * never retried. 0 turns retrying off.
+     */
+    public int maxRetries = 3;
+
     // ------------------------------------------------------------------ builds
 
     /** Hard cap on blocks in one build. */
@@ -206,6 +213,7 @@ public final class AiBuildConfig {
         temperature = clamp(temperature, 0.0, 2.0);
         maxOutputTokens = (int) clamp(maxOutputTokens, 1024, 1_000_000);
         requestTimeoutSeconds = (int) clamp(requestTimeoutSeconds, 10, 900);
+        maxRetries = (int) clamp(maxRetries, 0, 8);
         maxBlocks = (long) clamp(maxBlocks, 1, 5_000_000);
         maxRadius = (int) clamp(maxRadius, 1, 512);
         maxHeight = (int) clamp(maxHeight, 1, 384);
