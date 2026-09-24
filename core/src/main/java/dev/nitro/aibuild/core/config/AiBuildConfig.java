@@ -54,8 +54,13 @@ public final class AiBuildConfig {
      * How many times to retry when the provider says it is busy or rate limited,
      * waiting a little longer each time. Permanent errors such as a bad key are
      * never retried. 0 turns retrying off.
+     *
+     * <p>Six rather than a token two or three, because a busy provider refuses in
+     * about a second and charges nothing for it. Refusals come at random, so each
+     * further attempt is another independent chance of getting through, and the
+     * whole sequence still finishes inside a minute.
      */
-    public int maxRetries = 3;
+    public int maxRetries = 6;
 
     // ------------------------------------------------------------------ builds
 

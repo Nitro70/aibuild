@@ -255,9 +255,25 @@ They do not make it a redstone engineer.
 A **503** means the model is overloaded on the provider's side, not that anything is wrong with
 your key or the mod. Gemini words it as "this model is currently experiencing high demand".
 
-AIBuild now handles it for you. It retries up to three times, waiting about 2, 4 and then 8
-seconds, and tells you in chat while it does. If the provider says how long to wait, that wait is
-used instead. Errors that retrying cannot fix, like a bad key, are never retried.
+AIBuild handles it for you. It retries up to six times, starting after about a second and
+waiting a little longer each time, and tells you in chat while it does. Retrying is cheap: a busy
+provider refuses in about a second and charges nothing for it, and the refusals come at random,
+so each further attempt is another fresh chance. If the provider says how long to wait, that wait
+is used instead. Errors that retrying cannot fix, like a bad key, are never retried.
+
+**If it stays busy, change model before assuming anything is broken, and do not reach for the
+newest one.** Everybody queues for the newest model, so it is often the least available. Measured
+against one key in one sitting, with the same request sent to each:
+
+| Model | Answered |
+|---|---|
+| newest flash | 0 out of 3 |
+| the one before it | 0 out of 3 |
+| **one generation back** | **3 out of 3** |
+
+Run `/aibuild models` to see what your key can reach, then `/aibuild model <id>`, or pick it from
+the list in `/aibuild config`. A model that is a generation old is usually both quicker to answer
+and far more likely to answer at all.
 
 If one model stays busy for a while, give it a fallback. Overload is usually one model rather than
 the whole provider, so a smaller or older one often answers while the main one is swamped. In
@@ -292,7 +308,7 @@ All in `config/aibuild.json`.
 | `temperature` | `0.4` | Lower is more literal |
 | `maxOutputTokens` | `32768` | Raise for very large builds |
 | `requestTimeoutSeconds` | `180` | How long to wait for the model |
-| `maxRetries` | `3` | Retries when the provider is busy or rate limited. `0` turns it off |
+| `maxRetries` | `6` | Retries when the provider is busy or rate limited. `0` turns it off |
 | `providers.<id>.fallbackModel` | empty | A second model to try if the first stays busy |
 | `maxBlocks` | `20000` | Hard cap per build |
 | `maxRadius` / `maxHeight` | `48` | How far a build may reach from its origin |

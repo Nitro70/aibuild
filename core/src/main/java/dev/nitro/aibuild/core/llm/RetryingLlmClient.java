@@ -22,8 +22,15 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public final class RetryingLlmClient implements LlmClient {
 
-    /** First wait. Doubles each retry. */
-    static final long BASE_DELAY_MS = 2_000;
+    /**
+     * First wait. Doubles each retry.
+     *
+     * <p>Kept short on purpose. A provider that is turning requests away does it
+     * in about a second and charges nothing for it, so trying again soon costs
+     * almost nothing and usually works: the refusals are random rather than a
+     * sustained outage.
+     */
+    static final long BASE_DELAY_MS = 1_000;
 
     /** Nobody should be left staring at chat for longer than this between tries. */
     static final long MAX_DELAY_MS = 20_000;

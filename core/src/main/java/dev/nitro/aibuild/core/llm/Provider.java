@@ -15,12 +15,18 @@ import java.util.Optional;
  * <p>Default models are a starting point and they go stale: model ids churn far
  * faster than this mod will. Use {@code /aibuild models} to see what a key can
  * actually reach and set the model from there.
+ *
+ * <p>Worth knowing when picking one: the newest model is often the worst choice.
+ * Measured against one key, the two newest Gemini flash models refused every
+ * request while a slightly older one answered every time, because everybody is
+ * queueing for the new ones. If builds keep coming back busy, try a model a
+ * generation back before assuming anything is broken.
  */
 public enum Provider {
 
     GEMINI("gemini", "Google Gemini",
             "https://generativelanguage.googleapis.com/v1beta",
-            ProviderStyle.GEMINI, "GEMINI_API_KEY", "gemini-2.5-pro", true),
+            ProviderStyle.GEMINI, "GEMINI_API_KEY", "gemini-3.5-flash", true),
 
     OPENAI("openai", "OpenAI",
             "https://api.openai.com/v1",
