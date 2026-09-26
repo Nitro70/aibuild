@@ -55,12 +55,13 @@ public final class AiBuildConfig {
      * waiting a little longer each time. Permanent errors such as a bad key are
      * never retried. 0 turns retrying off.
      *
-     * <p>Six rather than a token two or three, because a busy provider refuses in
-     * about a second and charges nothing for it. Refusals come at random, so each
-     * further attempt is another independent chance of getting through, and the
-     * whole sequence still finishes inside a minute.
+     * <p>Kept low because a refused request is not free. On Gemini's free tier every
+     * request counts against a limit of 20 a day per model, failed ones included, so
+     * six retries on the model and six more on the fallback could spend most of a
+     * day's allowance on one build that was never going to go through. Two catches
+     * the random one second refusals, which usually clear on the next try.
      */
-    public int maxRetries = 6;
+    public int maxRetries = 2;
 
     // ------------------------------------------------------------------ builds
 

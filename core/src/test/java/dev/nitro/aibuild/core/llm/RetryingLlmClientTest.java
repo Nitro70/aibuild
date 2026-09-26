@@ -165,6 +165,94 @@ class RetryingLlmClientTest {
         assertEquals(-1, HttpSupport.retryAfterSeconds("Wed, 21 Oct 2026 07:28:00 GMT", null));
     }
 
+    /** The real body of a Gemini free tier 429 once the day's requests are gone, trimmed. */
+    private static final String GEMINI_DAILY_QUOTA = """
+            {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED",
+              "message": "You exceeded your current quota, please check your plan and billing details. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.5-flash\\nPlease retry in 59.674235455s.",
+              "details": [
+                {"@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                 "violations": [{"quotaMetric": "generativelanguage.googleapis.com/generate_content_free_tier_requests",
+                                 "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+                                 "quotaDimensions": {"location": "global", "model": "gemini-3.5-flash"},
+                                 "quotaValue": "20"}]},
+                {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "59s"}]}}
+            """;
+
+    private static LlmException dailyQuota() {
+        return HttpSupport.failure(429, GEMINI_DAILY_QUOTA, -1, "Gemini", "gemini-3.5-flash");
+    }
+
+    /**
+     * Every retry spends one of the day's requests, failed or not, so retrying a
+     * spent allowance only fails again and tells the player to wait a minute when
+     * the real wait is until tomorrow.
+     */
+    @Test
+    void aSpentDailyAllowanceIsNotRetried() {
+        ScriptedClient primary = new ScriptedClient("gemini", dailyQuota(), "{}");
+        LlmException error = assertThrows(LlmException.class,
+                () -> retrying(primary, null, 3).generatePlanJson("s", "u"));
+        assertEquals(1, primary.calls);
+        assertTrue(slept.isEmpty(), "slept " + slept);
+        assertTrue(error.isQuotaExhausted());
+    }
+
+    /** The allowance is per model, so another model still has its own. */
+    @Test
+    void aSpentDailyAllowanceGoesStraightToTheFallback() throws Exception {
+        ScriptedClient primary = new ScriptedClient("gemini-3.5-flash", dailyQuota());
+        ScriptedClient fallback = new ScriptedClient("gemini-2.5-flash", "{\"fallback\":true}");
+        assertEquals("{\"fallback\":true}", retrying(primary, fallback, 3).generatePlanJson("s", "u"));
+        assertEquals(1, primary.calls);
+        assertTrue(slept.isEmpty(), "slept " + slept);
+    }
+
+    @Test
+    void dailyQuotaIsToldApartFromAPerMinuteLimit() {
+        assertTrue(dailyQuota().isQuotaExhausted());
+        assertTrue(!dailyQuota().isTransient());
+
+        String perMinute = GEMINI_DAILY_QUOTA.replace("PerDay", "PerMinute");
+        LlmException minute = HttpSupport.failure(429, perMinute, 30, "Gemini", "gemini-3.5-flash");
+        assertTrue(!minute.isQuotaExhausted());
+        assertTrue(minute.isTransient());
+
+        LlmException plain = HttpSupport.failure(429, "{\"error\":{\"message\":\"slow down\"}}", -1, "Gemini", "m");
+        assertTrue(plain.isTransient());
+    }
+
+    /** OpenAI style providers say "insufficient_quota" when the account has no credit left. */
+    @Test
+    void noCreditLeftIsNotRetried() {
+        String body = "{\"error\":{\"message\":\"You exceeded your current quota, please check your plan and "
+                + "billing details.\",\"type\":\"insufficient_quota\",\"code\":\"insufficient_quota\"}}";
+        LlmException error = HttpSupport.failure(429, body, -1, "OpenAI", "gpt-5");
+        assertTrue(error.isQuotaExhausted());
+        assertTrue(!error.isTransient());
+    }
+
+    /** "Retry in 59s" is what Google says, and it is wrong: the allowance is back tomorrow. */
+    @Test
+    void theDailyQuotaMessageSaysWhatHappenedAndWhatToDo() {
+        String message = dailyQuota().getMessage();
+        assertTrue(message.contains("20"), message);
+        assertTrue(message.contains("gemini-3.5-flash"), message);
+        assertTrue(message.contains("Failed requests count"), message);
+        assertTrue(!message.contains("retry in"), message);
+    }
+
+    /**
+     * Measured on Gemini: a mansion "just under 50000 blocks" was answered 1 time in 11
+     * while a normal house went through 2 in 3, in the same minutes. So a busy reply
+     * on a big build is the build's size as much as anyone else's traffic.
+     */
+    @Test
+    void aBusyReplySuggestsASmallerBuild() {
+        String message = HttpSupport.failure(503, "{\"error\":{\"message\":\"high demand\"}}", -1,
+                "Gemini", "gemini-3.5-flash").getMessage();
+        assertTrue(message.contains("smaller"), message);
+    }
+
     @Test
     void transientClassification() {
         for (int status : new int[] {429, 500, 502, 503, 504}) {

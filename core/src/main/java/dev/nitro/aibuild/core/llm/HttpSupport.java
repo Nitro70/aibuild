@@ -19,6 +19,14 @@ final class HttpSupport {
     private static final java.util.regex.Pattern RETRY_DELAY =
             java.util.regex.Pattern.compile("\"retryDelay\"\\s*:\\s*\"(\\d+)(?:\\.\\d+)?s\"");
 
+    /** Gemini names the limit it hit, e.g. {@code "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"}. */
+    private static final java.util.regex.Pattern DAILY_QUOTA_ID =
+            java.util.regex.Pattern.compile("\"quotaId\"\\s*:\\s*\"[^\"]*PerDay");
+
+    /** Gemini's free tier limit, e.g. {@code "quotaValue": "20"}. */
+    private static final java.util.regex.Pattern QUOTA_VALUE =
+            java.util.regex.Pattern.compile("\"quotaValue\"\\s*:\\s*\"(\\d+)\"");
+
     private HttpSupport() {}
 
     static HttpClient newClient() {
@@ -49,9 +57,46 @@ final class HttpSupport {
      * broken request.
      */
     static LlmException failure(HttpResponse<String> response, String provider, String model) {
-        int status = response.statusCode();
-        return new LlmException(describeFailure(status, response.body(), provider, model),
-                status, retryAfterSeconds(response));
+        return failure(response.statusCode(), response.body(), retryAfterSeconds(response), provider, model);
+    }
+
+    /** The same, from the parts, so it can be tested without a real response. */
+    static LlmException failure(int status, String body, int retryAfterSeconds, String provider, String model) {
+        if (status == 429 && isQuotaExhausted(body)) {
+            return LlmException.quotaExhausted(describeQuotaExhausted(body, provider, model), status);
+        }
+        return new LlmException(describeFailure(status, body, provider, model), status, retryAfterSeconds);
+    }
+
+    /**
+     * Whether a 429 means the allowance is gone rather than "slow down".
+     *
+     * <p>A per minute limit clears within a minute and is worth waiting out. A daily
+     * limit, or an account with no credit, is not, and retrying it spends nothing
+     * but the player's time.
+     */
+    static boolean isQuotaExhausted(String body) {
+        if (body == null) {
+            return false;
+        }
+        return DAILY_QUOTA_ID.matcher(body).find() || body.contains("\"insufficient_quota\"");
+    }
+
+    /**
+     * Written by hand rather than passing the provider's message on, because
+     * Gemini's ends with "Please retry in 59s", which is wrong: the allowance comes
+     * back the next day.
+     */
+    private static String describeQuotaExhausted(String body, String provider, String model) {
+        if (!DAILY_QUOTA_ID.matcher(body).find()) {
+            return provider + " says this account has no quota left (429). Check its plan and "
+                    + "billing, or pick another provider.";
+        }
+        java.util.regex.Matcher limit = QUOTA_VALUE.matcher(body);
+        String allowance = limit.find() ? limit.group(1) + " requests a day" : "a daily number of requests";
+        return provider + " allows this key " + allowance + " for '" + model + "', and they are used up "
+                + "(429). Failed requests count too. The allowance resets at midnight Pacific time. "
+                + "Until then, pick another model with /aibuild model, or another provider.";
     }
 
     /**
@@ -93,7 +138,10 @@ final class HttpSupport {
                     + "Run /aibuild models to see what is available. " + detail;
             case 413 -> provider + " said the request was too large (413). Ask for a smaller build. " + detail;
             case 429 -> provider + " rate limited the request (429). Wait a moment and try again. " + detail;
-            case 500, 502, 503, 504 -> provider + " had a server error (" + status + "). "
+            case 503 -> provider + " is too busy to answer (503). " + detail
+                    + " Big builds are refused far more often than small ones, so a smaller build, "
+                    + "or the same one built in parts, usually gets through.";
+            case 500, 502, 504 -> provider + " had a server error (" + status + "). "
                     + "This is usually temporary. " + detail;
             default -> provider + " returned HTTP " + status + ". " + detail;
         };

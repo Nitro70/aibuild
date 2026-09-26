@@ -31,6 +31,13 @@ public final class RetryNotices {
 
             @Override
             public void fallingBack(LlmException reason) {
+                if (reason.isQuotaExhausted()) {
+                    AiBuildMod.LOGGER.info("{} allowance used up (status {}), trying the fallback model",
+                            provider, reason.status());
+                    say.accept("This key's allowance for that model is used up, so trying the "
+                            + "fallback model.");
+                    return;
+                }
                 AiBuildMod.LOGGER.info("{} still busy (status {}) after retries, trying the fallback model",
                         provider, reason.status());
                 say.accept(provider + " is still busy, so trying the fallback model.");

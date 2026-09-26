@@ -255,11 +255,30 @@ They do not make it a redstone engineer.
 A **503** means the model is overloaded on the provider's side, not that anything is wrong with
 your key or the mod. Gemini words it as "this model is currently experiencing high demand".
 
-AIBuild handles it for you. It retries up to six times, starting after about a second and
-waiting a little longer each time, and tells you in chat while it does. Retrying is cheap: a busy
-provider refuses in about a second and charges nothing for it, and the refusals come at random,
-so each further attempt is another fresh chance. If the provider says how long to wait, that wait
-is used instead. Errors that retrying cannot fix, like a bad key, are never retried.
+AIBuild retries twice, starting after about a second and waiting a little longer each time, and
+tells you in chat while it does. If the provider says how long to wait, that wait is used instead.
+Errors that retrying cannot fix, like a bad key, are never retried.
+
+It retries only twice because **a refused request is not free**. On Gemini's free tier each model
+allows 20 requests a day, and failed requests count toward it too. Retrying harder can spend most
+of a day's allowance on one build. When the allowance is gone, AIBuild says so straight away and
+moves to your fallback model, which has an allowance of its own, instead of retrying something
+that cannot work until tomorrow. It resets at midnight Pacific time.
+
+**Big builds are refused far more often than small ones.** Measured on one key, one model, in
+the same half hour:
+
+| Asked for | Answered |
+|---|---|
+| "build a normal sized house" | 2 out of 3 |
+| a wooden mansion "just under 50000 blocks" | 1 out of 11 |
+
+The big ones fail partway through, after anything from a few seconds to a minute and a half, so
+they are not being turned away at the door. The 11 include the mod's normal request plus three
+variations on it: streaming the reply, turning down the model's thinking, and dropping the
+response schema. None of them changed the picture. If a big build keeps coming back busy, build it in parts
+("the ground floor of a desert mansion", then "the upper floor"), or use a provider without the
+free tier limits, such as `claude-cli` with your Claude subscription.
 
 **If it stays busy, change model before assuming anything is broken, and do not reach for the
 newest one.** Everybody queues for the newest model, so it is often the least available. Measured
@@ -280,7 +299,7 @@ the whole provider, so a smaller or older one often answers while the main one i
 `config/aibuild.json`, under your provider:
 
 ```json
-"gemini": { "apiKey": "...", "model": "gemini-2.5-flash", "fallbackModel": "another-model-id" }
+"gemini": { "apiKey": "...", "model": "gemini-3.5-flash", "fallbackModel": "gemini-2.5-flash" }
 ```
 
 Run `/aibuild models` to see which ids your key can use.
@@ -308,7 +327,7 @@ All in `config/aibuild.json`.
 | `temperature` | `0.4` | Lower is more literal |
 | `maxOutputTokens` | `32768` | Raise for very large builds |
 | `requestTimeoutSeconds` | `180` | How long to wait for the model |
-| `maxRetries` | `6` | Retries when the provider is busy or rate limited. `0` turns it off |
+| `maxRetries` | `2` | Retries when the provider is busy or rate limited. Each one counts toward a free tier's daily limit. `0` turns it off |
 | `providers.<id>.fallbackModel` | empty | A second model to try if the first stays busy |
 | `maxBlocks` | `20000` | Hard cap per build |
 | `maxRadius` / `maxHeight` | `48` | How far a build may reach from its origin |

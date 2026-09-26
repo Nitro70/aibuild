@@ -21,13 +21,14 @@ public class LlmException extends Exception {
     private final int status;
     private final int retryAfterSeconds;
     private final boolean timedOut;
+    private final boolean quotaExhausted;
 
     public LlmException(String message) {
-        this(message, 0, -1, false, null);
+        this(message, 0, -1, false, false, null);
     }
 
     public LlmException(String message, Throwable cause) {
-        this(message, 0, -1, false, cause);
+        this(message, 0, -1, false, false, cause);
     }
 
     /**
@@ -35,23 +36,34 @@ public class LlmException extends Exception {
      * @param retryAfterSeconds what the provider asked us to wait, or -1 if it did not say
      */
     public LlmException(String message, int status, int retryAfterSeconds) {
-        this(message, status, retryAfterSeconds, false, null);
+        this(message, status, retryAfterSeconds, false, false, null);
     }
 
-    private LlmException(String message, int status, int retryAfterSeconds, boolean timedOut, Throwable cause) {
+    private LlmException(String message, int status, int retryAfterSeconds, boolean timedOut,
+                         boolean quotaExhausted, Throwable cause) {
         super(message, cause);
         this.status = status;
         this.retryAfterSeconds = retryAfterSeconds;
         this.timedOut = timedOut;
+        this.quotaExhausted = quotaExhausted;
+    }
+
+    /**
+     * The key's allowance for this model is used up, such as Gemini's free tier
+     * daily request limit. Not worth retrying, since the allowance comes back
+     * tomorrow rather than in a few seconds, but another model has its own.
+     */
+    public static LlmException quotaExhausted(String message, int status) {
+        return new LlmException(message, status, -1, false, true, null);
     }
 
     /** No reply in time. Usually load on the provider's side, so worth retrying. */
     public static LlmException timeout(String message) {
-        return new LlmException(message, 0, -1, true, null);
+        return new LlmException(message, 0, -1, true, false, null);
     }
 
     public static LlmException timeout(String message, Throwable cause) {
-        return new LlmException(message, 0, -1, true, cause);
+        return new LlmException(message, 0, -1, true, false, cause);
     }
 
     public int status() {
@@ -63,7 +75,11 @@ public class LlmException extends Exception {
         return retryAfterSeconds;
     }
 
+    public boolean isQuotaExhausted() {
+        return quotaExhausted;
+    }
+
     public boolean isTransient() {
-        return timedOut || TRANSIENT_STATUSES.contains(status);
+        return !quotaExhausted && (timedOut || TRANSIENT_STATUSES.contains(status));
     }
 }

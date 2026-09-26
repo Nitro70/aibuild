@@ -25,10 +25,11 @@ public final class RetryingLlmClient implements LlmClient {
     /**
      * First wait. Doubles each retry.
      *
-     * <p>Kept short on purpose. A provider that is turning requests away does it
-     * in about a second and charges nothing for it, so trying again soon costs
-     * almost nothing and usually works: the refusals are random rather than a
-     * sustained outage.
+     * <p>Kept short on purpose. A provider that is turning requests away usually
+     * does it within a second or two, and those refusals are random rather than a
+     * sustained outage, so the next try soon after often gets through. They are not
+     * free, though: Gemini counts them against the daily allowance, which is why the
+     * number of retries is kept low.
      */
     static final long BASE_DELAY_MS = 1_000;
 
@@ -83,7 +84,7 @@ public final class RetryingLlmClient implements LlmClient {
         try {
             return withRetries(primary, systemInstruction, userPrompt);
         } catch (LlmException e) {
-            if (fallback == null || !e.isTransient()) {
+            if (fallback == null || !(e.isTransient() || e.isQuotaExhausted())) {
                 throw e;
             }
             listener.fallingBack(e);
